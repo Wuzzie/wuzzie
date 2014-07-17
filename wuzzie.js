@@ -8,7 +8,6 @@ WUZZIE.PerspectiveCamera = function( camera, canvas ) {
 		this._canvas = canvas;
 		this.init();
 	}
-	this.inputDown.bind(this);
 }
 
 WUZZIE.PerspectiveCamera.prototype = {
@@ -21,13 +20,13 @@ WUZZIE.PerspectiveCamera.prototype = {
 		}
 	
 		this.bindlist = {
-			forward: 87, //key: w
-			back: 83, //key: s
-			left: 65, //key: a
-			right: 68, //key: d
-			up: 32, //key: spacebar
-			down: 67, //key: c
-			shift: 16 //key: shift
+			forward: 87,
+			back: 83,
+			left: 65,
+			right: 68,
+			up: 32,
+			down: 67,
+			shift: 16
 		};
 		
 		this.controls = {
