@@ -3,20 +3,22 @@ var WUZZIE = {
 };
 
 WUZZIE.PerspectiveCamera = function( camera, canvas ) {
-	if ( arguments.length === 2 ) {
 		this._camera = camera;
 		this._canvas = canvas;
+		this._pitchObject = new THREE.Object3D();
+		this._yawObject = new THREE.Object3D();
 		this.init();
-	}
 }
 
 WUZZIE.PerspectiveCamera.prototype = {
 	
 	init: function() {	
 		this.charSettings = {
-			speed_normal: 0.1,
+			speed_default: 0.1,
 			speed_sprint: 0.4,
-			speed: 0.1
+			speed: 0.1,
+			sensitivity_default: 0.002,
+			sensitivity: 0.002
 		}
 	
 		this.bindlist = {
@@ -80,6 +82,13 @@ WUZZIE.PerspectiveCamera.prototype = {
 			shift: 16
 		};
 		
+		this.handlers = {
+			inputMouseMoveHandler: this.inputMouseMove.bind( this ),
+			inputDownHandler: this.inputDown.bind( this ),
+			inputUpHandler: this.inputUp.bind( this )
+		}
+		
+		this.createPointerLockObjects();
 		this.checkPointerLock();
 	},
 	
@@ -112,19 +121,53 @@ WUZZIE.PerspectiveCamera.prototype = {
 		if ( havePointerLock === false ) {
 			alert("Pointer Lock API is not supported in your browser - check your browser version");
 		} else {
-			this._canvas.addEventListener( "click", this.enablePointerLock );
-			document.addEventListener( "keydown", this.inputDown.bind(this) );
-			document.addEventListener( "keyup", this.inputUp.bind(this) );
+			this.initConstantListeners()
 		}
 	},
 	
-	enablePointerLock: function(e) {
+	initConstantListeners: function() {
+		this._canvas.addEventListener( "click", this.enablePointerLock.bind( this ) );
+		document.addEventListener( "pointerlockchange", this.checkPointerLockState.bind( this ) );
+		document.addEventListener( "mozpointerlockchange", this.checkPointerLockState.bind( this ) );
+		document.addEventListener( "webkitpointerlockchange", this.checkPointerLockState.bind( this ) );
+		document.addEventListener('pointerlockerror', function(){ console.log("Pointer Lock Error event fired") } );
+		document.addEventListener('mozpointerlockerror', function(){ console.log("Pointer Lock Error event fired") } );
+		document.addEventListener('webkitpointerlockerror', function(){ console.log("Pointer Lock Error event fired") } );
+	},
+	
+	checkPointerLockState: function( e ) {
+		if ( document.pointerLockElement === this._canvas || document.mozPointerLockElement === this._canvas || document.webkitPointerLockElement === this._canvas ) {
+			document.addEventListener( "mousemove", this.handlers.inputMouseMoveHandler );
+			document.addEventListener( "keydown", this.handlers.inputDownHandler );
+			document.addEventListener( "keyup", this.handlers.inputUpHandler );
+		} else {
+			document.removeEventListener( "mousemove", this.handlers.inputMouseMoveHandler );
+			document.removeEventListener( "keydown", this.handlers.inputDownHandler );
+			document.removeEventListener( "keyup", this.handlers.inputUpHandler );
+		}
+	},
+	
+	enablePointerLock: function( e ) {
 		e.target.requestPointerLock = e.target.requestPointerLock || e.target.mozRequestPointerLock || e.target.webkitRequestPointerLock;
 		e.target.requestPointerLock()
 	},
 	
-	disablePointerLock: function() {
+	inputMouseMove: function( e ) {
+		var movementX = e.movementX || e.mozMovementX || e.webkitMovementX || 0,
+			movementY = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
 		
+		this._yawObject.rotation.y -= movementX * this.charSettings.sensitivity;
+		this._pitchObject.rotation.x -= movementY * this.charSettings.sensitivity;
+		this._pitchObject.rotation.x = Math.max( -Math.PI/2, Math.min( Math.PI/2, this._pitchObject.rotation.x ) );
+	},
+	
+	createPointerLockObjects: function(){
+		this._pitchObject.add( this._camera );
+		this._yawObject.add( this._pitchObject );
+	},
+	
+	getObject: function(){
+		return this._yawObject;
 	},
 	
 	inputDown: function( e ) {
@@ -148,7 +191,7 @@ WUZZIE.PerspectiveCamera.prototype = {
 			this.controls.down = true;
 			break;
 		case this.bindlist.shift:
-			this.charSettings.speed = speed_sprint;
+			this.charSettings.speed = this.charSettings.speed_sprint;
 			break;
 		}
 	},
@@ -174,29 +217,29 @@ WUZZIE.PerspectiveCamera.prototype = {
 			this.controls.down = false;
 			break;
 		case this.bindlist.shift:
-			this.charSettings.speed = this.charSettings.speed_normal;
+			this.charSettings.speed = this.charSettings.speed_default;
 			break;
 		}
 	},
 	
-	applyMove: function(){
+	updateMovement: function(){
 		if ( this.controls.forward == true ) {
-			this._camera.translateZ( -this.charSettings.speed );
+			this._yawObject.translateZ( -this.charSettings.speed );
 		}
 		if ( this.controls.back == true ) {
-			this._camera.translateZ( this.charSettings.speed * 0.5 );
+			this._yawObject.translateZ( this.charSettings.speed * 0.5 );
 		}
 		if ( this.controls.left == true ) {
-			this._camera.translateX( -this.charSettings.speed * 0.8 );
+			this._yawObject.translateX( -this.charSettings.speed * 0.8 );
 		}
 		if ( this.controls.right == true ) {
-			this._camera.translateX( this.charSettings.speed * 0.8 );
+			this._yawObject.translateX( this.charSettings.speed * 0.8 );
 		}
 		if ( this.controls.up == true ) {
-			this._camera.position.y += this.charSettings.speed;
+			this._yawObject.position.y += this.charSettings.speed;
 		}
 		if ( this.controls.down == true ) {
-			this._camera.position.y -= this.charSettings.speed;
+			this._yawObject.position.y -= this.charSettings.speed;
 		}
 	}
 }
